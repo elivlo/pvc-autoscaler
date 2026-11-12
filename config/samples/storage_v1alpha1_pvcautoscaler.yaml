@@ -1,0 +1,9 @@
+apiVersion: storage.elivlo.io/v1alpha1
+kind: PVCAutoscaler
+metadata:
+  labels:
+    app.kubernetes.io/name: operator-dev
+    app.kubernetes.io/managed-by: kustomize
+  name: pvcautoscaler-sample
+spec:
+  # TODO(user): Add fields here

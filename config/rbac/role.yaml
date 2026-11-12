@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - storage.elivlo.io
+  resources:
+  - pvcautoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.elivlo.io
+  resources:
+  - pvcautoscalers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - storage.elivlo.io
+  resources:
+  - pvcautoscalers/status
+  verbs:
+  - get
+  - patch
+  - update
