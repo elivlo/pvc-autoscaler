@@ -81,7 +81,7 @@ type PVCAutoscalerStatus struct {
 // +kubebuilder:resource:shortName=pvca
 // +kubebuilder:printcolumn:name="PVC",type=string,JSONPath=`.spec.pvcName`
 // +kubebuilder:printcolumn:name="Used",type=string,JSONPath=`.status.used`
-// +kubebuilder:printcolumn:name="UsedPercent",type=string,JSONPath=`.status.usedPercent`
+// +kubebuilder:printcolumn:name="UsedPercent",type=integer,JSONPath=`.status.usedPercent`
 // +kubebuilder:printcolumn:name="Capacity",type=string,JSONPath=`.status.capacity`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`,priority=1
