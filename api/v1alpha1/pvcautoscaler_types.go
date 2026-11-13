@@ -34,7 +34,7 @@ type PVCAutoscalerSpec struct {
 	// +kubebuilder:default=85
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=99
-	ThresholdPercent *int32 `json:"thresholdPercent,omitempty"`
+	ThresholdPercent *int64 `json:"thresholdPercent,omitempty"`
 	// +optional
 	// +kubebuilder:default="5m"
 	// +kubebuilder:validation:Type=string

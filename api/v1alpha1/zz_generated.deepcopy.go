@@ -90,7 +90,7 @@ func (in *PVCAutoscalerSpec) DeepCopyInto(out *PVCAutoscalerSpec) {
 	out.IncreaseBy = in.IncreaseBy.DeepCopy()
 	if in.ThresholdPercent != nil {
 		in, out := &in.ThresholdPercent, &out.ThresholdPercent
-		*out = new(int32)
+		*out = new(int64)
 		**out = **in
 	}
 	if in.Cooldown != nil {
