@@ -42,7 +42,7 @@ type PVCAutoscalerSpec struct {
 	Cooldown *metav1.Duration `json:"cooldown,omitempty"`
 
 	// +required
-	MaxSize *resource.Quantity `json:"maxSize"`
+	MaxSize resource.Quantity `json:"maxSize"`
 }
 
 // PVCAutoscalerStatus defines the observed state of PVCAutoscaler.

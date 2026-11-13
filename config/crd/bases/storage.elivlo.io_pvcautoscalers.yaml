@@ -82,7 +82,7 @@ spec:
                 type: string
               thresholdPercent:
                 default: 85
-                format: int32
+                format: int64
                 maximum: 99
                 minimum: 1
                 type: integer
