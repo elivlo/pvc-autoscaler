@@ -145,8 +145,7 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	autoscaler.Status.Capacity = resource.NewQuantity(usage.CapacityBytes/Mi*Mi, resource.BinarySI)
 	autoscaler.Status.Used = resource.NewQuantity(usage.UsedBytes/Mi*Mi, resource.BinarySI)
-	var percentage = (100 * usage.UsedBytes / usage.CapacityBytes)
-	autoscaler.Status.UsedPercent = &percentage
+	autoscaler.Status.UsedPercent = &usage.UsedPercent
 
 	meta.SetStatusCondition(&autoscaler.Status.Conditions,
 		metav1.Condition{
