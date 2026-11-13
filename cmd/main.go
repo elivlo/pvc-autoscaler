@@ -37,6 +37,7 @@ import (
 
 	storagev1alpha1 "github.com/elivlo/pvc-autoscaler/api/v1alpha1"
 	"github.com/elivlo/pvc-autoscaler/internal/controller"
+	"github.com/elivlo/pvc-autoscaler/internal/stats"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -140,7 +141,9 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	config := ctrl.GetConfigOrDie()
+
+	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
@@ -164,9 +167,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	statsClient, err := stats.New(config)
+	if err != nil {
+		setupLog.Error(err, "Failed to create clientset")
+		os.Exit(1)
+	}
+
 	if err := (&controller.PVCAutoscalerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Stats:  statsClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "pvcautoscaler")
 		os.Exit(1)

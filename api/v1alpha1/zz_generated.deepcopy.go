@@ -125,9 +125,21 @@ func (in *PVCAutoscalerStatus) DeepCopyInto(out *PVCAutoscalerStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	out.Used = in.Used.DeepCopy()
-	out.Capacity = in.Capacity.DeepCopy()
-	in.LastPolled.DeepCopyInto(&out.LastPolled)
+	if in.Used != nil {
+		in, out := &in.Used, &out.Used
+		x := (*in).DeepCopy()
+		*out = &x
+	}
+	if in.UsedPercent != nil {
+		in, out := &in.UsedPercent, &out.UsedPercent
+		*out = new(int64)
+		**out = **in
+	}
+	if in.Capacity != nil {
+		in, out := &in.Capacity, &out.Capacity
+		x := (*in).DeepCopy()
+		*out = &x
+	}
 	if in.LastResizeTime != nil {
 		in, out := &in.LastResizeTime, &out.LastResizeTime
 		*out = (*in).DeepCopy()

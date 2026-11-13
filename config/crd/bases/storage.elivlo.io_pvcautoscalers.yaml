@@ -11,10 +11,32 @@ spec:
     kind: PVCAutoscaler
     listKind: PVCAutoscalerList
     plural: pvcautoscalers
+    shortNames:
+    - pvca
     singular: pvcautoscaler
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.pvcName
+      name: PVC
+      type: string
+    - jsonPath: .status.used
+      name: Used
+      type: string
+    - jsonPath: .status.usedPercent
+      name: UsedPercent
+      type: string
+    - jsonPath: .status.capacity
+      name: Capacity
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
+      priority: 1
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: PVCAutoscaler is the Schema for the pvcautoscalers API
@@ -56,15 +78,17 @@ spec:
                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                 x-kubernetes-int-or-string: true
               pvcName:
+                minLength: 1
                 type: string
               thresholdPercent:
                 default: 85
                 format: int32
-                maximum: 100
+                maximum: 99
                 minimum: 1
                 type: integer
             required:
             - increaseBy
+            - maxSize
             - pvcName
             type: object
           status:
@@ -80,11 +104,6 @@ spec:
                 description: |-
                   conditions represent the current state of the PVCAutoscaler resource.
                   Each condition has a unique type and reflects the status of a specific aspect of the resource.
-
-                  Standard condition types include:
-                  - "Available": the resource is fully functional
-                  - "Progressing": the resource is being created or updated
-                  - "Degraded": the resource failed to reach or maintain its desired state
 
                   The status of each condition is one of True, False, or Unknown.
                 items:
@@ -145,15 +164,11 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              laseResizeTime:
-                format: date-time
-                type: string
-              lastPolled:
+              lastResizeTime:
                 format: date-time
                 type: string
               observedGeneration:
-                default: 1
-                format: int32
+                format: int64
                 type: integer
               used:
                 anyOf:
@@ -161,11 +176,9 @@ spec:
                 - type: string
                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                 x-kubernetes-int-or-string: true
-            required:
-            - capacity
-            - lastPolled
-            - observedGeneration
-            - used
+              usedPercent:
+                format: int64
+                type: integer
             type: object
         required:
         - spec

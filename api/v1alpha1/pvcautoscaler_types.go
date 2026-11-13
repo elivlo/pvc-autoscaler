@@ -22,17 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // PVCAutoscalerSpec defines the desired state of PVCAutoscaler
 type PVCAutoscalerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
-
 	// +required
+	// +kubebuilder:validation:MinLength=1
 	PVCName string `json:"pvcName"`
 	// +required
 	IncreaseBy resource.Quantity `json:"increaseBy"`
@@ -40,7 +33,7 @@ type PVCAutoscalerSpec struct {
 	// +optional
 	// +kubebuilder:default=85
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=99
 	ThresholdPercent *int32 `json:"thresholdPercent,omitempty"`
 	// +optional
 	// +kubebuilder:default="5m"
@@ -48,49 +41,50 @@ type PVCAutoscalerSpec struct {
 	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
 	Cooldown *metav1.Duration `json:"cooldown,omitempty"`
 
-	// +optional
-	MaxSize *resource.Quantity `json:"maxSize,omitempty"`
+	// +required
+	MaxSize *resource.Quantity `json:"maxSize"`
 }
 
 // PVCAutoscalerStatus defines the observed state of PVCAutoscaler.
 type PVCAutoscalerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// For Kubernetes API conventions, see:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 
 	// conditions represent the current state of the PVCAutoscaler resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
 	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
 	// The status of each condition is one of True, False, or Unknown.
 	// +listType=map
 	// +listMapKey=type
+	// +patchStrategy=merge
+	// +patchMergeKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	Used     resource.Quantity `json:"used"`
-	Capacity resource.Quantity `json:"capacity"`
-	// +kubebuilder:validation:Type=string
-	// +kubebuilder:validation:Format=date-time
-	LastPolled metav1.Time `json:"lastPolled"`
-	// +kubebuilder:default=1
-	ObservedGeneration int32 `json:"observedGeneration"`
+	// +optional
+	Used *resource.Quantity `json:"used,omitempty"`
+	// +optional
+	UsedPercent *int64 `json:"usedPercent,omitempty"`
+	// +optional
+	Capacity *resource.Quantity `json:"capacity,omitempty"`
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Format=date-time
-	LastResizeTime *metav1.Time `json:"laseResizeTime,omitempty"`
+	LastResizeTime *metav1.Time `json:"lastResizeTime,omitempty"`
 }
 
+// PVCAutoscaler is the Schema for the pvcautoscalers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// PVCAutoscaler is the Schema for the pvcautoscalers API
+// +kubebuilder:resource:shortName=pvca
+// +kubebuilder:printcolumn:name="PVC",type=string,JSONPath=`.spec.pvcName`
+// +kubebuilder:printcolumn:name="Used",type=string,JSONPath=`.status.used`
+// +kubebuilder:printcolumn:name="UsedPercent",type=string,JSONPath=`.status.usedPercent`
+// +kubebuilder:printcolumn:name="Capacity",type=string,JSONPath=`.status.capacity`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`,priority=1
 type PVCAutoscaler struct {
 	metav1.TypeMeta `json:",inline"`
 
