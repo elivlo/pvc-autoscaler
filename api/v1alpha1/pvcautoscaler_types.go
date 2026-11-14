@@ -23,11 +23,13 @@ import (
 )
 
 // PVCAutoscalerSpec defines the desired state of PVCAutoscaler
+// +kubebuilder:validation:XValidation:rule="quantity(string(self.maxSize)).isGreaterThan(quantity(string(self.increaseBy)))",message="maxSize must be greater than increaseBy"
 type PVCAutoscalerSpec struct {
 	// +required
 	// +kubebuilder:validation:MinLength=1
 	PVCName string `json:"pvcName"`
 	// +required
+	// +kubebuilder:validation:XValidation:rule="string(self).matches('^[1-9][0-9]*Gi$')",message="increaseBy must be whole Gi, e.g. 2Gi"
 	IncreaseBy resource.Quantity `json:"increaseBy"`
 
 	// +optional
@@ -42,6 +44,7 @@ type PVCAutoscalerSpec struct {
 	Cooldown *metav1.Duration `json:"cooldown,omitempty"`
 
 	// +required
+	// +kubebuilder:validation:XValidation:rule="string(self).matches('^[1-9][0-9]*Gi$')",message="maxSize must be whole Gi, e.g. 2Gi"
 	MaxSize resource.Quantity `json:"maxSize"`
 }
 
