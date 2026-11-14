@@ -43,7 +43,7 @@ import (
 
 const requeueTime = time.Minute * 2
 const pvcIndexKey = "spec.volumes.pvc.claimName"
-const Mi = 1 << 20
+const mi = 1 << 20
 
 type StatsProvider interface {
 	VolumeStats(ctx context.Context, nodeName, namespace, pvc string) (*stats.Usage, error)
@@ -143,8 +143,8 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	autoscaler.Status.Capacity = resource.NewQuantity(usage.CapacityBytes/Mi*Mi, resource.BinarySI)
-	autoscaler.Status.Used = resource.NewQuantity(usage.UsedBytes/Mi*Mi, resource.BinarySI)
+	autoscaler.Status.Capacity = resource.NewQuantity(usage.CapacityBytes/mi*mi, resource.BinarySI)
+	autoscaler.Status.Used = resource.NewQuantity(usage.UsedBytes/mi*mi, resource.BinarySI)
 	autoscaler.Status.UsedPercent = &usage.UsedPercent
 
 	meta.SetStatusCondition(&autoscaler.Status.Conditions,
