@@ -86,6 +86,8 @@ spec:
               pvcName:
                 minLength: 1
                 type: string
+              suspend:
+                type: boolean
               thresholdPercent:
                 default: 85
                 format: int64
