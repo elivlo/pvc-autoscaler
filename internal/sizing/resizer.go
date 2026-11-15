@@ -21,16 +21,16 @@ const withinThreshold ResizeReason = "WithinThreshold"
 const cooldownActive ResizeReason = "CooldownActive"
 const resizeInProgress ResizeReason = "ResizeInProgress"
 const maxSizeReached ResizeReason = "MaxSizeReached"
-const resize ResizeReason = "Resize"
+const thresholdExceeded ResizeReason = "ThresholdExceeded"
 const Suspend ResizeReason = "Suspended"
 
 func (r ResizeReason) ResizeNeeded() bool {
-	return r == resize
+	return r == thresholdExceeded
 }
 
 func (r ResizeReason) Status() metav1.ConditionStatus {
 	switch r {
-	case resize, resizeInProgress:
+	case thresholdExceeded, resizeInProgress:
 		return metav1.ConditionTrue
 	default:
 		return metav1.ConditionFalse
@@ -49,8 +49,8 @@ func (r ResizeReason) Message() string {
 		return "Waiting for the volume to be expanded"
 	case maxSizeReached:
 		return "PVC is at max size"
-	case resize:
-		return "Requested resize"
+	case thresholdExceeded:
+		return "Resize because threshold exceeded"
 	case Suspend:
 		return "Autoscaler is suspended"
 	default:
@@ -81,8 +81,8 @@ func CheckResize(usage *stats.Usage, autoscaler *v1alpha1.PVCAutoscaler, pvc *co
 	newSizeInt := (currentSize.Value() + autoscaler.Spec.IncreaseBy.Value() + gi - 1) / gi * gi
 	newSize := resource.NewQuantity(newSizeInt, resource.BinarySI)
 	if newSize.Cmp(autoscaler.Spec.MaxSize) == 1 {
-		return autoscaler.Spec.MaxSize.DeepCopy(), resize
+		return autoscaler.Spec.MaxSize.DeepCopy(), thresholdExceeded
 	}
 
-	return *newSize, resize
+	return *newSize, thresholdExceeded
 }
