@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/recorder"
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -55,8 +56,9 @@ type StatsProvider interface {
 // PVCAutoscalerReconciler reconciles a PVCAutoscaler object
 type PVCAutoscalerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Stats  StatsProvider
+	Scheme   *runtime.Scheme
+	Recorder recorder.EventRecorder
+	Stats    StatsProvider
 }
 
 // +kubebuilder:rbac:groups=storage.elivlo.io,resources=pvcautoscalers,verbs=get;list;watch;create;update;patch;delete
@@ -66,13 +68,10 @@ type PVCAutoscalerReconciler struct {
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;patch
 // +kubebuilder:rbac:groups="",resources=nodes/proxy,verbs=get
 // +kubebuilder:rbac:groups="storage.k8s.io",resources=storageclasses,verbs=get;list;watch
+// +kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the PVCAutoscaler object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.25.0/pkg/reconcile
@@ -262,12 +261,34 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 					Message:            sizing.ResizeFailed.Message(),
 					ObservedGeneration: base.Generation,
 				})
+			r.Recorder.Eventf(
+				&autoscaler,
+				&pvc,
+				corev1.EventTypeWarning,
+				string(sizing.ResizeFailed),
+				"ResizePVC",
+				"Resizing of PVC %s from %s to %s failed: %v",
+				pvc.Name,
+				pvcBase.Spec.Resources.Requests.Storage().String(),
+				newSize.String(),
+				err,
+			)
 			return result, client.IgnoreNotFound(err)
 		}
 
 		now := metav1.NewTime(now)
 		autoscaler.Status.LastResizeTime = &now
-		// TODO: write an event
+		r.Recorder.Eventf(
+			&autoscaler,
+			&pvc,
+			corev1.EventTypeNormal,
+			string(reason),
+			"ResizePVC",
+			"Resized PVC %s from %s to %s",
+			pvc.Name,
+			pvcBase.Spec.Resources.Requests.Storage().String(),
+			newSize.String(),
+		)
 	}
 
 	return result, nil

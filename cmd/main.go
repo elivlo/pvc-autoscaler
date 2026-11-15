@@ -174,9 +174,10 @@ func main() {
 	}
 
 	if err := (&controller.PVCAutoscalerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Stats:  statsClient,
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorder("pvcautoscaler"),
+		Stats:    statsClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "pvcautoscaler")
 		os.Exit(1)
