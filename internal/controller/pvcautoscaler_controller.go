@@ -60,7 +60,9 @@ type PVCAutoscalerReconciler struct {
 // +kubebuilder:rbac:groups=storage.elivlo.io,resources=pvcautoscalers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=storage.elivlo.io,resources=pvcautoscalers/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;patch
 // +kubebuilder:rbac:groups="",resources=nodes/proxy,verbs=get
+// +kubebuilder:rbac:groups="storage.k8s.io",resources=storageclasses,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

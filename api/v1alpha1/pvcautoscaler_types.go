@@ -43,7 +43,7 @@ type PVCAutoscalerSpec struct {
 	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
 	Cooldown *metav1.Duration `json:"cooldown,omitempty"`
 	// +optional
-	Suspend bool `json:"suspend"`
+	Suspend bool `json:"suspend,omitempty"`
 
 	// +required
 	// +kubebuilder:validation:XValidation:rule="string(self).matches('^[1-9][0-9]*Gi$')",message="maxSize must be whole Gi, e.g. 2Gi"
