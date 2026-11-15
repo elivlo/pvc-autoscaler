@@ -33,11 +33,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	storagev1alpha1 "github.com/elivlo/pvc-autoscaler/api/v1alpha1"
+	"github.com/elivlo/pvc-autoscaler/internal/sizing"
 	"github.com/elivlo/pvc-autoscaler/internal/stats"
 )
 
@@ -116,8 +119,8 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				Status:             metav1.ConditionFalse,
 				Reason:             "StatsUnavailable",
 				Message:            "no running pod mounts PVC " + autoscaler.Spec.PVCName,
-				ObservedGeneration: base.Generation},
-		)
+				ObservedGeneration: base.Generation,
+			})
 		return result, nil
 	}
 
@@ -129,8 +132,8 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				Status:             metav1.ConditionFalse,
 				Reason:             "StatsUnavailable",
 				Message:            "no stats available for PVC " + autoscaler.Spec.PVCName,
-				ObservedGeneration: base.Generation},
-		)
+				ObservedGeneration: base.Generation,
+			})
 		return result, nil
 	}
 	if err != nil {
@@ -140,8 +143,8 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				Status:             metav1.ConditionFalse,
 				Reason:             "StatsError",
 				Message:            fmt.Sprintf("could not retrieve stats for PVC %s: %s", autoscaler.Spec.PVCName, err),
-				ObservedGeneration: base.Generation},
-		)
+				ObservedGeneration: base.Generation,
+			})
 		return ctrl.Result{}, err
 	}
 
@@ -155,8 +158,117 @@ func (r *PVCAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Status:             metav1.ConditionTrue,
 			Reason:             "StatsAvailable",
 			Message:            "stats of PVC are up to date",
-			ObservedGeneration: base.Generation},
-	)
+			ObservedGeneration: base.Generation,
+		})
+
+	var pvc corev1.PersistentVolumeClaim
+	if err = r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: autoscaler.Spec.PVCName}, &pvc); err != nil {
+		if apierrors.IsNotFound(err) {
+			meta.SetStatusCondition(&autoscaler.Status.Conditions,
+				metav1.Condition{
+					Type:               "Ready",
+					Status:             metav1.ConditionFalse,
+					Reason:             "PVCNotFound",
+					Message:            "could not find PVC",
+					ObservedGeneration: base.Generation,
+				})
+		}
+		return result, client.IgnoreNotFound(err)
+	}
+	pvcBase := pvc.DeepCopy()
+
+	if pvc.Status.Phase != corev1.ClaimBound {
+		meta.SetStatusCondition(&autoscaler.Status.Conditions,
+			metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "PVCNotBound",
+				Message:            "the PVC is currently not bound",
+				ObservedGeneration: base.Generation,
+			})
+		return result, nil
+	}
+
+	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
+		meta.SetStatusCondition(&autoscaler.Status.Conditions,
+			metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "ExpansionNotAllowed",
+				Message:            "no valid StorageClass set on PVC",
+				ObservedGeneration: base.Generation,
+			})
+		return result, nil
+	}
+
+	var sc storagev1.StorageClass
+	if err = r.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &sc); err != nil {
+		if apierrors.IsNotFound(err) {
+			meta.SetStatusCondition(&autoscaler.Status.Conditions,
+				metav1.Condition{
+					Type:               "Ready",
+					Status:             metav1.ConditionFalse,
+					Reason:             "StorageClassNotFound",
+					Message:            "could not find StorageClass",
+					ObservedGeneration: base.Generation,
+				})
+		}
+		return result, client.IgnoreNotFound(err)
+	}
+
+	if sc.AllowVolumeExpansion == nil || !*sc.AllowVolumeExpansion {
+		meta.SetStatusCondition(&autoscaler.Status.Conditions,
+			metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "ExpansionNotAllowed",
+				Message:            "the StorageClass does not allow resizing the volume",
+				ObservedGeneration: base.Generation,
+			})
+		return result, nil
+	}
+
+	if autoscaler.Spec.Suspend {
+		meta.SetStatusCondition(&autoscaler.Status.Conditions,
+			metav1.Condition{
+				Type:               sizing.ConditionType,
+				Status:             sizing.Suspend.Status(),
+				Reason:             string(sizing.Suspend),
+				Message:            sizing.Suspend.Message(),
+				ObservedGeneration: base.Generation,
+			})
+		return ctrl.Result{}, nil
+	}
+
+	now := time.Now()
+	newSize, reason := sizing.CheckResize(usage, &autoscaler, &pvc, now)
+	meta.SetStatusCondition(&autoscaler.Status.Conditions,
+		metav1.Condition{
+			Type:               sizing.ConditionType,
+			Status:             reason.Status(),
+			Reason:             string(reason),
+			Message:            reason.Message(),
+			ObservedGeneration: base.Generation,
+		})
+
+	if reason.ResizeNeeded() {
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = newSize
+		if err = r.Patch(ctx, &pvc, client.MergeFrom(pvcBase)); err != nil {
+			meta.SetStatusCondition(&autoscaler.Status.Conditions,
+				metav1.Condition{
+					Type:               sizing.ConditionType,
+					Status:             sizing.ResizeFailed.Status(),
+					Reason:             string(sizing.ResizeFailed),
+					Message:            sizing.ResizeFailed.Message(),
+					ObservedGeneration: base.Generation,
+				})
+			return result, client.IgnoreNotFound(err)
+		}
+
+		now := metav1.NewTime(now)
+		autoscaler.Status.LastResizeTime = &now
+		// TODO: write an event
+	}
 
 	return result, nil
 }
