@@ -111,3 +111,5 @@ require (
 )
 
 tool sigs.k8s.io/kubebuilder/v4
+
+tool github.com/onsi/ginkgo/v2/ginkgo
